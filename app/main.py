@@ -11,41 +11,51 @@ headers = {
 
 
 def get_pages_count() -> int:
-    req = requests.get(url, headers=headers)
-    soup = BeautifulSoup(req.text, "lxml")
-    pages = int(soup.find_all("li", class_="page-item")[-2].text)
-    return pages
+    res = requests.get(url, headers=headers)
+    if res.status_code == 200:
+        soup = BeautifulSoup(res.text, "lxml")
+        pages = int(soup.find_all("li", class_="page-item")[-2].text)
+        return pages
+    return 0
 
 
 def get_model_name(name, description) -> str:
     if not "..." in name:
         return name
-    
+
     return description.split(",")[0]
 
 
 def scrape_page(url: str, params: dict) -> list:
-    req_1 = requests.get(url, headers=headers, params=params)
-    soup_1 = BeautifulSoup(req_1.text, "lxml")
+    res = requests.get(url, headers=headers, params=params)
 
-    laptops = soup_1.find_all("div", class_="product-wrapper")
-    data = []
-    for laptop in laptops:
-        model_name = laptop.find("a", class_="title").text
-        price = laptop.find("h4", class_="price").text
-        description = laptop.find("p", class_="description").text
-        data.append({
-            "model_name": get_model_name(model_name, description),
-            "price": price,
-            "description": description
-        })
-
-    return data
+    if res.status_code == 200:
+        soup_1 = BeautifulSoup(res.text, "lxml")
+        laptops = soup_1.find_all("div", class_="product-wrapper")
+        data = []
+        for laptop in laptops:
+            model_name = laptop.find("a", class_="title").text
+            price = laptop.find("h4", class_="price").text
+            description = laptop.find("p", class_="description").text
+            data.append({
+                "model_name": get_model_name(model_name, description),
+                "price": price,
+                "description": description
+            })
+        return data
+    else:
+        return []
 
 
 def main() -> None:
     all_data = []
-    for i in range(1, get_pages_count() + 1):
+    pages_count = get_pages_count()
+
+    if pages_count == 0:
+        print("Failed after loading site")
+        return
+
+    for i in range(1, pages_count + 1):
         page_data = scrape_page(url, {"page": i})
         all_data.extend(page_data)
 
